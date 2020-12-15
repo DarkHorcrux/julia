@@ -139,7 +139,7 @@ end
 const nonfunction_mt = typename(SimpleVector).mt
 
 function get_compileable_sig(method::Method, @nospecialize(atypes), sparams::SimpleVector)
-    isa(atypes, DataType) || return Nothing
+    isa(atypes, DataType) || return nothing
     mt = ccall(:jl_method_table_for, Any, (Any,), atypes)
     mt === nothing && return nothing
     return ccall(:jl_normalize_to_compilable_sig, Any, (Any, Any, Any, Any),

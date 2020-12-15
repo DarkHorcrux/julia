@@ -3483,18 +3483,32 @@ jl_value_t *jl_type_intersection_env_s(jl_value_t *a, jl_value_t *b, jl_svec_t *
             }
         }
     }
-    if (sz == 0 && szb > 0) {
-        while (jl_is_unionall(b)) {
-            env[i++] = (jl_value_t*)((jl_unionall_t*)b)->var;
-            b = ((jl_unionall_t*)b)->body;
-        }
-        sz = szb;
-    }
     if (penv) {
+        jl_value_t *btemp;
+        if (sz == 0 && szb > 0) {
+            btemp = b;
+            while (jl_is_unionall(btemp)) {
+                env[i++] = (jl_value_t*)((jl_unionall_t*)btemp)->var;
+                btemp = ((jl_unionall_t*)btemp)->body;
+            }
+            sz = szb;
+        }
+        btemp = b;
         jl_svec_t *e = jl_alloc_svec(sz);
         *penv = e;
-        for(i=0; i < sz; i++)
-            jl_svecset(e, i, env[i]);
+        for(i=0; i < sz; i++) {
+            assert(jl_is_unionall(btemp));
+            jl_value_t *ei = env[i];
+            if (jl_is_typevar(ei)) {
+                jl_tvar_t *vi = (jl_tvar_t*)ei;
+                if (jl_is_concrete_type(vi->ub) && vi->ub != (jl_value_t*)jl_datatype_type &&
+                    vi->ub != (jl_value_t*)jl_uniontype_type && vi->ub != (jl_value_t*)jl_unionall_type &&
+                    !var_occurs_invariant(((jl_unionall_t*)btemp)->body, ((jl_unionall_t*)btemp)->var, 0))
+                    ei = vi->ub;
+            }
+            jl_svecset(e, i, ei);
+            btemp = ((jl_unionall_t*)btemp)->body;
+        }
     }
  bot:
     JL_GC_POP();
